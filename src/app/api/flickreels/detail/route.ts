@@ -32,7 +32,30 @@ export async function GET(request: NextRequest) {
       throw new Error(`Upstream API failed with status: ${res.status}`);
     }
 
-    const data = await safeJson(res);
+    const data = await safeJson<any>(res);
+    
+    // Normalize episodes to include videoList for quality selector consistency
+    if (data.episodes && Array.isArray(data.episodes)) {
+      data.episodes = data.episodes.map((ep: any) => {
+        const videoUrl = ep.raw?.videoUrl || ep.videoUrl;
+        // FlickReels typically provides single quality per episode
+        // We create a videoList array for consistency with other platforms
+        const videoList = [{
+          url: videoUrl,
+          encode: "H264",
+          quality: 720, // Default to 720p if not specified
+          bitrate: "",
+          qualityLabel: "720p (H264)",
+        }];
+        
+        return {
+          ...ep,
+          videoUrl,
+          videoList,
+        };
+      });
+    }
+    
     return jsonResponse(data);
   } catch (error) {
     console.error("Error fetching FlickReels detail:", error);

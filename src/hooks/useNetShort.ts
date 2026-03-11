@@ -42,6 +42,7 @@ interface NetShortEpisode {
   episodeNo: number;
   cover: string;
   videoUrl: string;
+  videoList?: any[];
   quality: string;
   isLock: boolean;
   likeNums: string;

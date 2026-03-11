@@ -1,20 +1,46 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNetShortDetail } from "@/hooks/useNetShort";
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle, List, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Hls from "hls.js";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface VideoItem {
+  url: string;
+  encode: string;
+  quality: number;
+  qualityLabel: string;
+}
+
+interface EpisodeData {
+  episodeId: string;
+  episodeNo: number;
+  cover: string;
+  videoUrl: string;
+  videoList: VideoItem[];
+  quality: string;
+  isLock: boolean;
+  likeNums: number;
+  subtitleUrl: string;
+}
 
 export default function NetShortWatchPage() {
   const params = useParams<{ shortPlayId: string }>();
   const searchParams = useSearchParams();
   const shortPlayId = params.shortPlayId;
   const router = useRouter();
-  
+
   const [currentEpisode, setCurrentEpisode] = useState(1);
   const [showEpisodeList, setShowEpisodeList] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState<string>("auto");
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   
@@ -41,6 +67,32 @@ export default function NetShortWatchPage() {
     (ep) => ep.episodeNo === currentEpisode
   );
 
+  // Get available quality options for current episode
+  const qualityOptions = useMemo(() => {
+    if (!currentEpisodeData?.videoList) return [];
+
+    return currentEpisodeData.videoList.map((video, index) => ({
+      id: `${video.encode}-${video.quality}-${index}`,
+      label: video.qualityLabel || `${video.quality}p (${video.encode})`,
+      quality: video.quality,
+      video,
+    })).sort((a, b) => b.quality - a.quality);
+  }, [currentEpisodeData]);
+
+  // Get current video URL based on selected quality
+  const getCurrentVideoUrl = useCallback(() => {
+    if (!currentEpisodeData?.videoList?.length) return null;
+
+    if (selectedQuality === "auto" || !qualityOptions.length) {
+      // Default: prefer H264 for compatibility
+      const h264Video = currentEpisodeData.videoList.find(v => v.encode === "H264");
+      return h264Video || currentEpisodeData.videoList[0];
+    }
+
+    const selected = qualityOptions.find(q => q.id === selectedQuality);
+    return selected?.video || currentEpisodeData.videoList[0];
+  }, [currentEpisodeData, selectedQuality, qualityOptions]);
+
   // Handle video ended - auto next episode
   const handleVideoEnded = useCallback(() => {
     if (!data?.episodes) return;
@@ -53,76 +105,75 @@ export default function NetShortWatchPage() {
     }
   }, [currentEpisode, data?.episodes, shortPlayId]);
 
-  // Load video with fallback support for MP4/HLS
+  // Load video with HLS support
   useEffect(() => {
-    if (currentEpisodeData?.videoUrl && videoRef.current) {
-        const video = videoRef.current;
-        const videoUrl = currentEpisodeData.videoUrl;
+    const currentVideo = getCurrentVideoUrl();
+    if (!currentVideo || !videoRef.current) return;
 
-        addLog(`Loading video: ${videoUrl}`);
+    const video = videoRef.current;
+    const videoUrl = currentVideo.url;
 
-        // Clean up previous HLS instance
-        if (hlsRef.current) {
-            hlsRef.current.destroy();
-            hlsRef.current = null;
+    addLog(`Loading video: ${videoUrl}`);
+
+    // Clean up previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    const isHlsUrl = videoUrl.includes('.m3u8') || videoUrl.includes('application/x-mpegURL');
+    const isMp4Url = videoUrl.includes('.mp4') || videoUrl.includes('mime_type=video_mp4');
+
+    // Priority 1: HLS.js for .m3u8 (if supported)
+    if (isHlsUrl && Hls.isSupported()) {
+      addLog("Detected HLS stream, initializing HLS.js...");
+      const hls = new Hls({
+        debug: false,
+        enableWorker: true,
+        xhrSetup: function (xhr, url) {
+          xhr.withCredentials = false;
+        },
+      });
+      hlsRef.current = hls;
+
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        addLog("Manifest parsed, playing...");
+        video.play().catch((e) => addLog(`Auto-play failed: ${e.message}`));
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        const errorMsg = `HLS Error: ${data.type} - ${data.details}`;
+        console.error(errorMsg);
+
+        if (data.fatal) {
+          hls.destroy();
         }
+      });
+    }
+    // Priority 2: Native playback (MP4 or Native HLS on Safari)
+    else {
+      addLog(isMp4Url ? "Detected MP4/Native stream" : "Unknown format, trying native playback");
+      video.src = videoUrl;
+      video.load();
 
-        const isHlsUrl = videoUrl.includes('.m3u8') || videoUrl.includes('application/x-mpegURL');
-        const isMp4Url = videoUrl.includes('.mp4') || videoUrl.includes('mime_type=video_mp4');
-
-        // Priority 1: HLS.js for .m3u8 (if supported)
-        if (isHlsUrl && Hls.isSupported()) {
-            addLog("Detected HLS stream, initializing HLS.js...");
-            const hls = new Hls({
-                debug: false,
-                enableWorker: true,
-                xhrSetup: function (xhr, url) {
-                    xhr.withCredentials = false;
-                },
-            });
-            hlsRef.current = hls;
-            
-            hls.loadSource(videoUrl);
-            hls.attachMedia(video);
-            
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                addLog("Manifest parsed, playing...");
-                video.play().catch((e) => addLog(`Auto-play failed: ${e.message}`));
-            });
-
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                const errorMsg = `HLS Error: ${data.type} - ${data.details}`;
-                console.error(errorMsg);
-                
-                if (data.fatal) {
-                   // ... error handling
-                   // If HLS fails fatally, we could try native as last ditch, but usually fatal means fatal.
-                   hls.destroy();
-                }
-            });
-        } 
-        // Priority 2: Native playback (MP4 or Native HLS on Safari)
-        else {
-             addLog(isMp4Url ? "Detected MP4/Native stream" : "Unknown format, trying native playback");
-             video.src = videoUrl;
-             video.load(); // Ensure source update
-             
-             const playPromise = video.play();
-             if (playPromise !== undefined) {
-                playPromise.catch((e) => {
-                    addLog(`Native play failed: ${e.message}`);
-                });
-             }
-        }
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => {
+          addLog(`Native play failed: ${e.message}`);
+        });
+      }
     }
 
     return () => {
-        if (hlsRef.current) {
-            hlsRef.current.destroy();
-            hlsRef.current = null;
-        }
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     };
-  }, [currentEpisodeData?.videoUrl]);
+  }, [getCurrentVideoUrl]);
 
   const goToEpisode = (ep: number) => {
     setCurrentEpisode(ep);
@@ -247,12 +298,41 @@ export default function NetShortWatchPage() {
             <p className="text-white/80 text-xs drop-shadow-md">Episode {currentEpisode}</p>
           </div>
 
-          <button
-            onClick={() => setShowEpisodeList(!showEpisodeList)}
-            className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10"
-          >
-            <List className="w-6 h-6 drop-shadow-md" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Quality Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10">
+                  <Settings className="w-6 h-6 drop-shadow-md" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[100]">
+                <DropdownMenuItem
+                  onClick={() => setSelectedQuality("auto")}
+                  className={selectedQuality === "auto" ? "text-primary font-semibold" : ""}
+                >
+                  Auto (H264)
+                </DropdownMenuItem>
+                {qualityOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option.id}
+                    onClick={() => setSelectedQuality(option.id)}
+                    className={selectedQuality === option.id ? "text-primary font-semibold" : ""}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Episode List Toggle */}
+            <button
+              onClick={() => setShowEpisodeList(!showEpisodeList)}
+              className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10"
+            >
+              <List className="w-6 h-6 drop-shadow-md" />
+            </button>
+          </div>
         </div>
       </div>
 

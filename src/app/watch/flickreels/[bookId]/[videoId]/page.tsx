@@ -3,9 +3,15 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useFlickReelsDetail } from "@/hooks/useFlickReels";
-import { ChevronLeft, ChevronRight, Loader2, List, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, List, AlertCircle, Settings } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function FlickReelsWatchPage() {
   const params = useParams();
@@ -16,6 +22,7 @@ export default function FlickReelsWatchPage() {
   // Use separate state for active ID to allow instant UI updates
   const [activeVideoId, setActiveVideoId] = useState(initialVideoId);
   const [showEpisodeList, setShowEpisodeList] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState<string>("auto");
   const [retryCount, setRetryCount] = useState(0);
   const [videoReady, setVideoReady] = useState(false);
   const [warmupError, setWarmupError] = useState(false);
@@ -49,18 +56,45 @@ export default function FlickReelsWatchPage() {
     return episodes[currentIndex];
   }, [episodes, currentIndex]);
 
+  // Get available quality options for current episode
+  const qualityOptions = useMemo(() => {
+    if (!currentEpisodeData?.videoList) return [];
+
+    return currentEpisodeData.videoList.map((video: any, index: number) => ({
+      id: `${video.encode}-${video.quality}-${index}`,
+      label: video.qualityLabel || `${video.quality}p (${video.encode})`,
+      quality: video.quality,
+      video,
+    })).sort((a, b) => b.quality - a.quality);
+  }, [currentEpisodeData]);
+
+  // Get current video URL based on selected quality
+  const getCurrentVideoUrl = useMemo(() => {
+    if (!currentEpisodeData?.videoList?.length) return null;
+
+    if (selectedQuality === "auto" || !qualityOptions.length) {
+      // Default: prefer H264 for compatibility
+      const h264Video = currentEpisodeData.videoList.find(v => v.encode === "H264");
+      return h264Video || currentEpisodeData.videoList[0];
+    }
+
+    const selected = qualityOptions.find(q => q.id === selectedQuality);
+    return selected?.video || currentEpisodeData.videoList[0];
+  }, [currentEpisodeData, selectedQuality, qualityOptions]);
+
   const totalEpisodes = episodes.length;
 
   // Update video src - combines warmup and src update
   // For initial load: wait for warmup before setting src
   // For auto-next: set src immediately, warmup runs in background
   useEffect(() => {
-    if (!currentEpisodeData?.raw?.videoUrl) return;
-    
+    const currentVideo = getCurrentVideoUrl;
+    if (!currentVideo) return;
+
     // Update timestamp when video changes
     videoTimestamp.current = Date.now();
-    
-    const videoUrl = currentEpisodeData.raw.videoUrl;
+
+    const videoUrl = currentVideo.url;
     const newSrc = `/api/proxy/video?url=${encodeURIComponent(videoUrl)}&referer=${encodeURIComponent("https://www.flickreels.com/")}&_t=${videoTimestamp.current}`;
     const warmupUrl = `/api/proxy/warmup?url=${encodeURIComponent(videoUrl)}`;
     
@@ -100,9 +134,10 @@ export default function FlickReelsWatchPage() {
 
   // Set initial video src after warmup completes (only for initial load)
   useEffect(() => {
-    if (!videoReady || !currentEpisodeData?.raw?.videoUrl || !videoRef.current) return;
-    
-    const newSrc = `/api/proxy/video?url=${encodeURIComponent(currentEpisodeData.raw.videoUrl)}&referer=${encodeURIComponent("https://www.flickreels.com/")}&_t=${videoTimestamp.current}`;
+    if (!videoReady || !getCurrentVideoUrl || !videoRef.current) return;
+
+    const currentVideo = getCurrentVideoUrl;
+    const newSrc = `/api/proxy/video?url=${encodeURIComponent(currentVideo.url)}&referer=${encodeURIComponent("https://www.flickreels.com/")}&_t=${videoTimestamp.current}`;
     
     // Check if src needs update
     if (videoRef.current.src !== newSrc && !videoRef.current.src.endsWith(newSrc.split('?')[1])) {
@@ -115,7 +150,7 @@ export default function FlickReelsWatchPage() {
          isInitialLoad.current = false;
        }
     }
-  }, [videoReady, currentEpisodeData?.raw?.videoUrl]);
+  }, [videoReady, getCurrentVideoUrl]);
 
   // Handlers
   const handleEpisodeChange = (episodeId: string, preserveFullscreen = false) => {
@@ -188,12 +223,41 @@ export default function FlickReelsWatchPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowEpisodeList(!showEpisodeList)}
-            className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10"
-          >
-            <List className="w-6 h-6 drop-shadow-md" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Quality Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10">
+                  <Settings className="w-6 h-6 drop-shadow-md" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[100]">
+                <DropdownMenuItem
+                  onClick={() => setSelectedQuality("auto")}
+                  className={selectedQuality === "auto" ? "text-primary font-semibold" : ""}
+                >
+                  Auto (H264)
+                </DropdownMenuItem>
+                {qualityOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option.id}
+                    onClick={() => setSelectedQuality(option.id)}
+                    className={selectedQuality === option.id ? "text-primary font-semibold" : ""}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Episode List Toggle */}
+            <button
+              onClick={() => setShowEpisodeList(!showEpisodeList)}
+              className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10"
+            >
+              <List className="w-6 h-6 drop-shadow-md" />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -3,10 +3,16 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useFreeReelsDetail } from "@/hooks/useFreeReels";
-import { ChevronLeft, ChevronRight, Loader2, List, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, List, AlertCircle, Settings } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Hls from "hls.js";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function FreeReelsWatchPage() {
   const params = useParams();
@@ -333,26 +339,27 @@ export default function FreeReelsWatchPage() {
 
           <div className="flex items-center gap-2">
               {/* Quality Selector */}
-              <div className="flex bg-black/40 backdrop-blur-sm rounded-lg p-1 border border-white/10">
-                  <button 
-                      onClick={() => setVideoQuality('h264')}
-                      className={cn(
-                          "text-[10px] px-2 py-1 rounded-md transition-all font-medium",
-                          videoQuality === 'h264' ? "bg-primary text-white" : "text-white/70 hover:text-white"
-                      )}
-                  >
-                      H.264
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 text-white/90 hover:text-white transition-colors rounded-full hover:bg-white/10">
+                    <Settings className="w-6 h-6 drop-shadow-md" />
                   </button>
-                  <button 
-                      onClick={() => setVideoQuality('h265')}
-                      className={cn(
-                          "text-[10px] px-2 py-1 rounded-md transition-all font-medium",
-                          videoQuality === 'h265' ? "bg-primary text-white" : "text-white/70 hover:text-white"
-                      )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[100]">
+                  <DropdownMenuItem
+                    onClick={() => setVideoQuality('h264')}
+                    className={videoQuality === 'h264' ? "text-primary font-semibold" : ""}
                   >
-                      H.265
-                  </button>
-              </div>
+                    Standard (H.264)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setVideoQuality('h265')}
+                    className={videoQuality === 'h265' ? "text-primary font-semibold" : ""}
+                  >
+                    HD (H.265) - Higher Quality
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <button
                 onClick={() => setShowEpisodeList(!showEpisodeList)}

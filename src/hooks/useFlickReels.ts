@@ -58,6 +58,8 @@ export interface FlickReelsEpisode {
   name: string;
   index: number;
   unlock: boolean;
+  videoUrl?: string;
+  videoList?: any[];
   raw: {
     chapter_id: string;
     chapter_num: number;

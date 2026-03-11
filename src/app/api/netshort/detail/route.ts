@@ -27,16 +27,33 @@ export async function GET(request: NextRequest) {
     const data = await safeJson<any>(response);
 
     // Normalize episode data
-    const episodes = (data.shortPlayEpisodeInfos || []).map((ep: any) => ({
-      episodeId: ep.episodeId,
-      episodeNo: ep.episodeNo,
-      cover: ep.episodeCover,
-      videoUrl: ep.playVoucher,
-      quality: ep.playClarity || "720p",
-      isLock: ep.isLock,
-      likeNums: ep.likeNums,
-      subtitleUrl: ep.subtitleList?.[0]?.url || "",
-    }));
+    // NetShort provides playClarity which indicates quality (e.g., "720p", "1080p")
+    // Each episode has a single playVoucher (video URL), but we normalize it as a videoList for consistency
+    const episodes = (data.shortPlayEpisodeInfos || []).map((ep: any) => {
+      const videoUrl = ep.playVoucher;
+      const quality = ep.playClarity || "720p";
+      
+      // Create videoList array for consistency with other platforms
+      const videoList = [{
+        url: videoUrl,
+        encode: "H264", // Default encode type
+        quality: parseInt(quality) || 720, // Extract number from "720p" etc
+        bitrate: "",
+        qualityLabel: quality,
+      }];
+
+      return {
+        episodeId: ep.episodeId,
+        episodeNo: ep.episodeNo,
+        cover: ep.episodeCover,
+        videoUrl, // Keep for backward compatibility
+        videoList, // Add for quality selector
+        quality,
+        isLock: ep.isLock,
+        likeNums: ep.likeNums,
+        subtitleUrl: ep.subtitleList?.[0]?.url || "",
+      };
+    });
 
     return jsonResponse({
       success: true,

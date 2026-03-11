@@ -1,9 +1,10 @@
-'use client';import Link from 'next/link';
+'use client';
+
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Menu, X, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePlatform } from '@/hooks/usePlatform';
-import Image from 'next/image';
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -72,12 +73,11 @@ export function Header() {
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Image
+                <img
                   src={platform.logo}
                   alt={platform.name}
-                  width={20}
-                  height={20}
                   className="w-5 h-5 object-contain"
+                  loading="lazy"
                 />
                 {platform.name}
               </button>
@@ -130,12 +130,11 @@ export function Header() {
                   currentPlatform === platform.id && pathname === '/' ? 'bg-red-600/10 text-red-500' : 'text-gray-300 hover:bg-zinc-900 hover:text-white'
                 }`}
               >
-                <Image
+                <img
                   src={platform.logo}
                   alt={platform.name}
-                  width={24}
-                  height={24}
                   className="w-6 h-6 object-contain"
+                  loading="lazy"
                 />
                 <span>{platform.name}</span>
               </button>

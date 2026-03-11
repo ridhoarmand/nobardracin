@@ -1,15 +1,25 @@
 import type { NextConfig } from "next";
+import path from 'path';
 
 const nextConfig: NextConfig = {
-  // React 19 strict mode for better development experience
+  // React 19 strict mode
   reactStrictMode: true,
   
   // Performance optimizations
   poweredByHeader: false,
   compress: true,
   
-  // Docker standalone output - creates minimal production build
+  // Docker standalone output
   output: 'standalone',
+  
+  // Ensure all required files are included in standalone build
+  outputFileTracingRoot: path.join(__dirname),
+  
+  experimental: {
+    // Reduce memory footprint
+    workerThreads: false,
+    cpus: 1,
+  },
   
   // React 19 compiler optimizations
   compiler: {
@@ -25,7 +35,7 @@ const nextConfig: NextConfig = {
   images: {
     // Optimize image formats
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    deviceSizes: [640, 750, 828, 1080, 1200],
     remotePatterns: [
       {
         protocol: "https",

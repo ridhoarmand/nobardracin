@@ -27,5 +27,13 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/nobardracin:latest
 
+      - name: Redeploy Portainer Stack
+        uses: wirgen/portainer-stack-redeploy-action@v1.1
+        with:
+          portainerUrl: ${{ secrets.PORTAINER_URL }}
+          accessToken: ${{ secrets.PORTAINER_ACCESS_TOKEN }}
+          stackId: 38
+          endpointId: 3
+
       - name: Logout from Docker Hub
         run: docker logout

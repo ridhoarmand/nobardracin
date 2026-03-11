@@ -1,0 +1,21 @@
+services:
+  nobardracin:
+    image: ridhoarmand/nobardracin:latest
+    container_name: nobardracin
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_BASE_URL=https://api.sansekai.my.id/api
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bun -e \"try{await fetch('http://localhost:3000/');process.exit(0)}catch{process.exit(1)}\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - proxy-tier
+networks:
+  proxy-tier:
+    external: true

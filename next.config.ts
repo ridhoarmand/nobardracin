@@ -15,10 +15,13 @@ const nextConfig: NextConfig = {
   // Ensure all required files are included in standalone build
   outputFileTracingRoot: path.join(__dirname),
   
+  // Memory optimization - disable features we don't need
   experimental: {
     // Reduce memory footprint
     workerThreads: false,
     cpus: 1,
+    // Disable unused features
+    clientRouterFilter: false,
   },
   
   // React 19 compiler optimizations

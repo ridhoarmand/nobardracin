@@ -47,7 +47,7 @@ export const PLATFORMS: PlatformInfo[] = [
   {
     id: 'flickreels',
     name: 'FlickReels',
-    logo: '/flickreels.png',
+    logo: '/flickreels.webp',
     apiBase: '/api/flickreels',
   },
   {

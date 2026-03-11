@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies with Bun
 COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --production
 
 # Copy project files
 COPY . .
@@ -13,8 +13,8 @@ COPY . .
 # Build the project
 RUN bun run build
 
-# Production stage - Use Alpine for smaller image
-FROM oven/bun:1-alpine AS runner
+# Production stage - Use minimal Bun image
+FROM oven/bun:1-slim AS runner
 
 WORKDIR /app
 
@@ -23,15 +23,19 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV BUN_ENV=production
 
-# Memory optimization flags
-ENV NODE_OPTIONS="--max-old-space-size=128 --no-warnings"
-ENV BUN_OPTS="--minimize-memory"
+# Aggressive memory optimization
+ENV NODE_OPTIONS="--max-old-space-size=64 --no-warnings --max-semi-space-size=8"
+ENV BUN_GC_ALWAYS_COLLECT=1
+ENV BUN_FEATURE_FLAGS="--minimize-memory"
 
-# Copy necessary files from build stage
-# For Next.js 16 with App Router, we need the standalone output
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/.next/server ./.next/server
+# Copy ONLY the standalone output (minimal files)
+COPY --from=build /app/.next/standalone/server.js ./
+COPY --from=build /app/.next/standalone/.next/static ./.next/static
+COPY --from=build /app/.next/standalone/.next/server ./.next/server
+COPY --from=build /app/.next/standalone/.env* ./
+COPY --from=build /app/.next/standalone/package.json ./
+
+# Copy public assets separately (icons, etc.)
 COPY --from=build /app/public ./public
 
 # Expose port
@@ -45,5 +49,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD bun -e "try{await fetch('http://localhost:3000/');process.exit(0)}catch{process.exit(1)}" || exit 1
 
-# Start Next.js server with Bun (memory optimized)
-CMD ["bun", "run", "--minimize-memory", "--no-warnings", "server.js"]
+# Start Next.js server with Bun (MAXIMUM memory optimization)
+CMD ["bun", "run", "--minimize-memory", "--no-warnings", "--gc-always-collect", "server.js"]

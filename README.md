@@ -81,6 +81,7 @@ Docker image menggunakan **Bun runtime** untuk performa maksimal:
 - **2x faster** runtime dibanding Node.js
 - **50% smaller** memory footprint
 - **Instant startup** time
+- **Native healthcheck** dengan Bun fetch (no wget/curl needed)
 
 ## Platform yang Didukung
 

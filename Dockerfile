@@ -22,18 +22,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 bunjs && \
-    adduser --system --uid 1001 bunjs
-
 # Copy necessary files from build stage
 # For Next.js 16 with App Router, we need the standalone output
-COPY --from=build --chown=bunjs:bunjs /app/.next/standalone ./
-COPY --from=build --chown=bunjs:bunjs /app/.next/static ./.next/static
-COPY --from=build --chown=bunjs:bunjs /app/public ./public
-
-# Switch to non-root user
-USER bunjs
+COPY --from=build --chown=1000:1000 /app/.next/standalone ./
+COPY --from=build --chown=1000:1000 /app/.next/static ./.next/static
+COPY --from=build --chown=1000:1000 /app/public ./public
 
 # Expose port
 EXPOSE 3000
@@ -42,9 +35,9 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+# Healthcheck using Bun (lighter than wget/curl)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD bun -e "try{await fetch('http://localhost:3000/');process.exit(0)}catch{process.exit(1)}" || exit 1
 
 # Start Next.js server with Bun
 CMD ["bun", "run", "server.js"]

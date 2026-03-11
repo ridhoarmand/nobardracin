@@ -1,13 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Performance optimizations
+  // React 19 strict mode for better development experience
   reactStrictMode: true,
+  
+  // Performance optimizations
   poweredByHeader: false,
   compress: true,
   
-  // Remove console.log in production
+  // Docker standalone output - creates minimal production build
+  output: 'standalone',
+  
+  // React 19 compiler optimizations
   compiler: {
+    reactRemoveProperties: true,
     removeConsole: process.env.NODE_ENV === 'production',
   },
   

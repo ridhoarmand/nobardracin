@@ -1,0 +1,9 @@
+# Bun configuration for faster installs and runs
+
+[install]
+# Faster installs with Bun's native linker
+auto-install = true
+
+[run]
+# Use Bun's native task runner
+silent = false

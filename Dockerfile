@@ -3,14 +3,16 @@ FROM oven/bun:1 AS build
 
 WORKDIR /app
 
-# Install dependencies with Bun
+# Copy package files
 COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile --production
 
-# Copy project files
+# Install dependencies (include devDependencies for build)
+RUN bun install --frozen-lockfile
+
+# Copy all project files
 COPY . .
 
-# Build the project
+# Build Next.js - creates .next folder with all static assets
 RUN bun run build
 
 # Production stage - Use minimal Bun image
@@ -26,17 +28,18 @@ ENV BUN_ENV=production
 # Aggressive memory optimization
 ENV NODE_OPTIONS="--max-old-space-size=64 --no-warnings --max-semi-space-size=8"
 ENV BUN_GC_ALWAYS_COLLECT=1
-ENV BUN_FEATURE_FLAGS="--minimize-memory"
 
-# Copy ONLY the standalone output (minimal files)
-COPY --from=build /app/.next/standalone/server.js ./
-COPY --from=build /app/.next/standalone/.next/static ./.next/static
-COPY --from=build /app/.next/standalone/.next/server ./.next/server
-COPY --from=build /app/.next/standalone/.env* ./
-COPY --from=build /app/.next/standalone/package.json ./
+# Copy the entire .next folder (includes static, server, and all assets)
+COPY --from=build /app/.next ./.next
 
-# Copy public assets separately (icons, etc.)
+# Copy public assets
 COPY --from=build /app/public ./public
+
+# Copy package files for node_modules (if needed)
+COPY --from=build /app/package.json ./package.json
+
+# Install only production dependencies in runner
+RUN bun install --production --frozen-lockfile 2>/dev/null || true
 
 # Expose port
 EXPOSE 3000
@@ -49,5 +52,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD bun -e "try{await fetch('http://localhost:3000/');process.exit(0)}catch{process.exit(1)}" || exit 1
 
-# Start Next.js server with Bun (MAXIMUM memory optimization)
-CMD ["bun", "run", "--minimize-memory", "--no-warnings", "--gc-always-collect", "server.js"]
+# Start Next.js server with Bun
+CMD ["bun", "run", "next", "start"]

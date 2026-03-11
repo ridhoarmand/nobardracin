@@ -52,7 +52,7 @@ export function Header() {
       }`}
     >
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo Section */}
           <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-red-600/20 group-hover:bg-red-600/30 transition-colors">

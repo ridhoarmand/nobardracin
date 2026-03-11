@@ -3,9 +3,9 @@ FROM oven/bun:1 AS build
 
 WORKDIR /app
 
-# Install dependencies with Bun
+# Install dependencies with Bun (include devDependencies for build)
 COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile
 
 # Copy project files
 COPY . .
@@ -26,16 +26,11 @@ ENV BUN_ENV=production
 # Aggressive memory optimization
 ENV NODE_OPTIONS="--max-old-space-size=64 --no-warnings --max-semi-space-size=8"
 ENV BUN_GC_ALWAYS_COLLECT=1
-ENV BUN_FEATURE_FLAGS="--minimize-memory"
 
-# Copy ONLY the standalone output (minimal files)
-COPY --from=build /app/.next/standalone/server.js ./
-COPY --from=build /app/.next/standalone/.next/static ./.next/static
-COPY --from=build /app/.next/standalone/.next/server ./.next/server
-COPY --from=build /app/.next/standalone/.env* ./
-COPY --from=build /app/.next/standalone/package.json ./
+# Copy standalone build (Next.js creates proper structure)
+COPY --from=build /app/.next/standalone/ ./
 
-# Copy public assets separately (icons, etc.)
+# Copy public assets from build stage (not from standalone)
 COPY --from=build /app/public ./public
 
 # Expose port

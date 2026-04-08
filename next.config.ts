@@ -1,20 +1,16 @@
 import type { NextConfig } from "next";
-import path from 'path';
 
 const nextConfig: NextConfig = {
   // React 19 strict mode
   reactStrictMode: true,
-  
+
   // Performance optimizations
   poweredByHeader: false,
   compress: true,
-  
-  // Docker standalone output
-  output: 'standalone',
-  
-  // Ensure all required files are included in standalone build
-  outputFileTracingRoot: path.join(__dirname),
-  
+
+  // IMPORTANT: Disable standalone for better compatibility with static assets
+  // output: 'standalone', // Disabled - causes 404 for static files
+
   // Memory optimization - disable features we don't need
   experimental: {
     // Reduce memory footprint
@@ -22,14 +18,16 @@ const nextConfig: NextConfig = {
     cpus: 1,
     // Disable unused features
     clientRouterFilter: false,
+    // Ensure proper static file handling
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
   },
-  
+
   // React 19 compiler optimizations
   compiler: {
     reactRemoveProperties: true,
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  
+
   logging: {
     fetches: {
       fullUrl: false,

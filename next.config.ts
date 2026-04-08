@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Matikan in-memory cache Next.js agar RAM tidak bengkak
+  cacheMaxMemorySize: 0,
+  
+  // Matikan ETag generation untuk menghemat memory & CPU di server
+  generateEtags: false,
+
   // React 19 strict mode
   reactStrictMode: true,
 
@@ -8,8 +14,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  // IMPORTANT: Disable standalone for better compatibility with static assets
-  // output: 'standalone', // Disabled - causes 404 for static files
+  // Docker standalone output
+  output: 'standalone',
 
   // Memory optimization - disable features we don't need
   experimental: {
@@ -34,6 +40,8 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Matikan build-in image optimization (sharp/squoosh) untuk hemat RAM yang ekstrim
+    unoptimized: true,
     // Optimize image formats
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200],

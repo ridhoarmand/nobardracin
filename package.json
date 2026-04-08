@@ -5,11 +5,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "next start",
     "lint": "next lint",
     "dev:bun": "bun run --watch next dev --turbopack",
-    "build:bun": "bun run next build",
+    "build:bun": "NEXT_TELEMETRY_DISABLED=1 bun run next build",
     "start:bun": "bun run next start"
   },
   "dependencies": {

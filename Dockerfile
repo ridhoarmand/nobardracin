@@ -4,11 +4,14 @@ FROM oven/bun:1 AS build
 WORKDIR /app
 
 # Install dependencies with Bun (include devDependencies for build)
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
 # Copy project files
 COPY . .
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the project
 RUN bun run build
